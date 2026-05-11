@@ -43,8 +43,6 @@ INPUT_IMAGE = None
 PREFERRED_INPUT_NAMES = [
     "phrase.bmp",
     "text.bmp",
-    "phrase_text.bmp",
-    "Снимок экрана 2026-04-30 014344.bmp",
 ]
 
 FONT_SIZE = 52
