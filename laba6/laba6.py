@@ -52,6 +52,11 @@ CANVAS_SIZE = (240, 240)
 BINARIZE_THRESHOLD = 200
 CROP_PADDING = 0
 
+IMAGE_FRAME_PADDING = 8
+IMAGE_FRAME_BORDER_WIDTH = 3
+IMAGE_FRAME_BORDER_COLOR = (0, 160, 0)
+IMAGE_FRAME_BACKGROUND_COLOR = (255, 255, 255)
+
 ALPHABET = [
     "А", "Б", "В", "Г", "Д", "Є", "Ж", "Ѕ", "З", "И", "І", "Й",
     "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "Ѹ",
@@ -160,9 +165,46 @@ def load_image_as_binary(path: Path, threshold: int = 200) -> tuple[np.ndarray, 
     return gray, binary
 
 
+def add_green_frame(image: Image.Image) -> Image.Image:
+    """
+    Добавляет зелёную рамку и белый отступ вокруг изображения.
+    """
+    image_rgb = image.convert("RGB")
+
+    out_w = image_rgb.width + 2 * (IMAGE_FRAME_PADDING + IMAGE_FRAME_BORDER_WIDTH)
+    out_h = image_rgb.height + 2 * (IMAGE_FRAME_PADDING + IMAGE_FRAME_BORDER_WIDTH)
+
+    out_img = Image.new("RGB", (out_w, out_h), IMAGE_FRAME_BACKGROUND_COLOR)
+    draw = ImageDraw.Draw(out_img)
+
+    for i in range(IMAGE_FRAME_BORDER_WIDTH):
+        draw.rectangle(
+            [i, i, out_w - 1 - i, out_h - 1 - i],
+            outline=IMAGE_FRAME_BORDER_COLOR,
+        )
+
+    paste_xy = (
+        IMAGE_FRAME_PADDING + IMAGE_FRAME_BORDER_WIDTH,
+        IMAGE_FRAME_PADDING + IMAGE_FRAME_BORDER_WIDTH,
+    )
+    out_img.paste(image_rgb, paste_xy)
+    return out_img
+
+
+def save_gray_image_with_frame(gray: np.ndarray, path: Path) -> None:
+    img = Image.fromarray(gray, mode="L")
+    add_green_frame(img).save(path)
+
+
 def save_binary_image(binary: np.ndarray, path: Path) -> None:
     img = np.where(binary == 1, 0, 255).astype(np.uint8)
-    Image.fromarray(img, mode="L").save(path)
+    pil_img = Image.fromarray(img, mode="L")
+    add_green_frame(pil_img).save(path)
+
+
+def save_original_image_with_frame(input_path: Path, path: Path) -> None:
+    img = Image.open(input_path).convert("RGB")
+    add_green_frame(img).save(path)
 
 
 def bounding_box_of_black(binary: np.ndarray) -> tuple[int, int, int, int]:
@@ -725,10 +767,12 @@ def main():
 
     gray, binary = load_image_as_binary(input_path, threshold=BINARIZE_THRESHOLD)
 
+    input_original_path = INPUT_DIR / "input_phrase_original.png"
     input_gray_path = INPUT_DIR / "input_gray.bmp"
     input_binary_path = INPUT_DIR / "input_binary.bmp"
 
-    Image.fromarray(gray, mode="L").save(input_gray_path)
+    save_original_image_with_frame(input_path, input_original_path)
+    save_gray_image_with_frame(gray, input_gray_path)
     save_binary_image(binary, input_binary_path)
 
     total_hp = horizontal_profile(binary)
@@ -815,7 +859,7 @@ def main():
     print()
 
     print("Результаты сохранены:")
-    print(f"- Вход:               {INPUT_DIR.resolve()}")
+    print(f"- Вход и фото фразы:  {INPUT_DIR.resolve()}")
     print(f"- Визуализации:       {VIS_DIR.resolve()}")
     print(f"- Профили текста:     {PROFILES_DIR.resolve()}")
     print(f"- Символы строки:     {SEGMENTS_DIR.resolve()}")
